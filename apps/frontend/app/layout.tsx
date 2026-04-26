@@ -6,7 +6,7 @@ import Toast from "./components/notifications/Toast";
 export default function RootLayout({children, }: {children: React.ReactNode;})
 {
     return (
-      <html lang="ru">
+      <html lang="ru" suppressHydrationWarning>
       <body className="min-h-screen text-white sa-bg">
       <NotificationProvider>
         <Header />

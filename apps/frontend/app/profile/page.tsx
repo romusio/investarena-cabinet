@@ -18,7 +18,28 @@ type Wallet = {
 export default function ProfilePage() {
     const [wallet, setWallet] = useState<Wallet | null>(null);
     const [loading, setLoading] = useState(true);
+    const [claimedTaskKeys, setClaimedTaskKeys] = useState<string[]>([]);
 
+    async function loadTaskClaims(): Promise<void> {
+        const token = localStorage.getItem("accessToken");
+
+        const res = await fetch(`${API}/wallet/task-claims`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        const keys = data.map((item: string | { taskKey: string }) => {
+            if (typeof item === "string") return item;
+            return item.taskKey;
+        });
+
+        setClaimedTaskKeys(keys);
+    }
     async function loadWallet() {
         const token = localStorage.getItem("accessToken");
 
@@ -46,6 +67,7 @@ export default function ProfilePage() {
 
     useEffect(() => {
         loadWallet();
+        loadTaskClaims();
     }, []);
 
     if (loading) {
@@ -72,6 +94,18 @@ export default function ProfilePage() {
     const createdLabel = wallet.createdAt
       ? new Date(wallet.createdAt).toLocaleDateString("ru-RU")
       : "—";
+
+    const dailyTaskIds = [
+        "daily-login",
+        "daily-profile",
+        "daily-store",
+    ];
+
+    const completedDailyTasks = dailyTaskIds.filter((taskId) =>
+      claimedTaskKeys.includes(taskId)
+    ).length;
+
+    const totalDailyTasks = dailyTaskIds.length;
 
     return (
       <div className="min-h-screen p-6 text-white">
@@ -282,7 +316,7 @@ export default function ProfilePage() {
 
                   <div className="mt-6 flex items-end justify-between">
                       <div className="text-3xl font-bold text-[#00FF85] drop-shadow-[0_0_8px_rgba(0,255,133,0.3)]">
-                          1 / 3
+                          {completedDailyTasks} / {totalDailyTasks}
                       </div>
                       <div className="text-sm text-white/70 transition group-hover:text-[#00FF85]">
                           Открыть →

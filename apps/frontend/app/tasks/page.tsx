@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNotifications } from "../components/notifications/NotificationProvider";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "/api";
@@ -22,6 +22,10 @@ type Task = {
 
 export default function TasksPage() {
     const { showToast, pushNotification } = useNotifications();
+
+    useEffect(() => {
+        loadTaskClaims();
+    }, []);
 
     const [dailyTasks, setDailyTasks] = useState<Task[]>([
         {
@@ -95,7 +99,27 @@ export default function TasksPage() {
         },
     ]);
 
-    async function claimTaskReward(points: number, xp: number) {
+    const [claimedTaskKeys, setClaimedTaskKeys] = useState<string[]>([]);
+    async function loadTaskClaims(): Promise<void> {
+        const token = localStorage.getItem("accessToken");
+
+        const res = await fetch(`${API}/wallet/task-claims`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        const keys = data.map((item: string | { taskKey: string }) => {
+            if (typeof item === "string") return item;
+            return item.taskKey;
+        });
+
+        setClaimedTaskKeys(keys);
+    }    async function claimTaskReward(points: number, xp: number, taskKey: string) {
         const token = localStorage.getItem("accessToken");
 
         const res = await fetch(`${API}/wallet/reward`, {
@@ -104,7 +128,7 @@ export default function TasksPage() {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ points, xp }),
+            body: JSON.stringify({ points, xp, taskKey }),
         });
 
         if (!res.ok) {
@@ -128,7 +152,14 @@ export default function TasksPage() {
         }
 
         try {
-            await claimTaskReward(task.rewardPoints, task.rewardXp);
+            await claimTaskReward(task.rewardPoints, task.rewardXp, task.id);
+
+            setClaimedTaskKeys((prev) => {
+                if (prev.includes(task.id)) return prev;
+                return [...prev, task.id];
+            });
+
+            await loadTaskClaims();
 
             if (task.type === "daily") {
                 setDailyTasks((prev) =>
@@ -165,7 +196,10 @@ export default function TasksPage() {
     }
 
     function renderTaskCard(task: Task) {
-        const isComplete = task.progress >= task.target;
+        const isReady = task.progress >= task.target;
+        const isClaimed = claimedTaskKeys.includes(task.id);
+        const isComplete = isReady || isClaimed;
+
         const progressPercent = Math.min(
           100,
           Math.round((task.progress / task.target) * 100)
@@ -179,7 +213,8 @@ export default function TasksPage() {
               <div className="mb-3 flex items-start justify-between gap-4">
                   <div>
                       <div className="mb-2 text-xs uppercase tracking-[0.16em] text-gray-500">
-                          {task.type === "daily" ? "Ежедневное задание" : "Долгосрочная цель"}
+                          {task.type === "daily" ? ("Ежедневное задание") : (<>Долгосрочная<br />цель</>)}
+
                       </div>
                       <div className="text-2xl font-bold leading-tight text-white">
                           {task.title}
@@ -211,26 +246,27 @@ export default function TasksPage() {
 
               <div className="mb-5 text-sm">
                   <span className="text-gray-400">Статус: </span>
-                  {task.claimed ? (
-                    <span className="text-[#00FF85]">Награда получена</span>
-                  ) : isComplete ? (
+                  {isClaimed ? (
+                    <span className="text-gray-400">Награда получена</span>
+                  ) : isReady ? (
                     <span className="text-[#00FF85]">Готово к получению</span>
                   ) : (
                     <span className="text-yellow-400">В процессе</span>
                   )}
               </div>
 
-              {task.claimed ? (
+              {isClaimed ? (
                 <button
                   disabled
-                  className="w-full cursor-not-allowed rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-gray-500"
+                  className="w-full cursor-not-allowed rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-gray-400"
                 >
                     Награда уже получена
                 </button>
-              ) : isComplete ? (
+              ) : isReady ? (
                 <button
+                  type="button"
                   onClick={() => handleClaim(task)}
-                  className="w-full rounded-xl bg-gradient-to-r from-[#00FF85] via-[#00FF85] to-[#00C853] px-4 py-3 text-sm font-semibold text-black shadow-[0_0_25px_rgba(0,255,133,0.30)] transition hover:scale-[1.02]"
+                  className="w-full rounded-xl bg-gradient-to-r from-[#00FF85] via-[#00FF85] to-[#00C853] px-4 py-3 text-sm font-semibold text-black shadow-[0_0_25px_rgba(0,255,133,0.30)] hover:scale-[1.02] transition"
                 >
                     Забрать награду
                 </button>

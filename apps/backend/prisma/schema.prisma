@@ -13,6 +13,7 @@ model User {
   phone        String?  @unique
   fullName     String?
   passwordHash String
+  taskClaims   UserTaskClaim[]
 
   xp        Int      @default(0)
   level     Int      @default(1)
@@ -107,4 +108,15 @@ model PointsLedger {
 
   @@index([userId])
   @@index([redemptionId])
+}
+
+model UserTaskClaim {
+  id        String   @id @default(uuid())
+  userId    String
+  taskKey   String
+  claimedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taskKey])
 }

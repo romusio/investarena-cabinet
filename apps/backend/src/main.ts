@@ -1,14 +1,19 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app.module";
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
-  app.setGlobalPrefix('api'); // <-- важно
+  app.enableCors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  });
+
+  app.setGlobalPrefix("api");
 
   await app.listen(3001);
-  console.log('Backend running on http://localhost:3001');
+
+  console.log("Backend running on http://localhost:3001");
 }
+
 bootstrap();
-
-

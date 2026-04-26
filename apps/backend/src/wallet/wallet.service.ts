@@ -3,7 +3,22 @@ import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class WalletService {
-    async addPoints(userId: string, points: number, xp: number) {
+    async addPoints(userId: string, points: number, xp: number, taskKey?: string) {
+        if (taskKey) {
+            const existingClaim = await this.prisma.userTaskClaim.findUnique({
+                where: {
+                    userId_taskKey: {
+                        userId,
+                        taskKey,
+                    },
+                },
+            });
+
+            if (existingClaim) {
+                throw new Error("Награда за это задание уже получена");
+            }
+        }
+
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
         });
@@ -15,7 +30,7 @@ export class WalletService {
         const newXp = user.xp + xp;
         const newLevel = Math.floor(newXp / 100) + 1;
 
-        await this.prisma.user.update({
+        const updatedUser = await this.prisma.user.update({
             where: { id: userId },
             data: {
                 xp: newXp,
@@ -29,24 +44,21 @@ export class WalletService {
                 userId,
                 amount: points,
                 type: "EARN",
-                reason: "Награда за задание",
-            },
-        });
+                reason: taskKey ? `Награда за задание: ${taskKey}` : "Награда за задание",
+    },
+    });
 
-        return this.prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-                id: true,
-                email: true,
-                fullName: true,
-                xp: true,
-                level: true,
-                points: true,
-                createdAt: true,
-            },
-        });
+        if (taskKey) {
+            await this.prisma.userTaskClaim.create({
+                data: {
+                    userId,
+                    taskKey,
+                },
+            });
+        }
+
+        return updatedUser;
     }
-
     constructor(private prisma: PrismaService) {}
 
     async wallet(userId: string) {
@@ -73,5 +85,19 @@ export class WalletService {
                 },
             },
         });
+    }
+    async taskClaims(userId: string) {
+        const claims = await this.prisma.userTaskClaim.findMany({
+            where: { userId },
+            select: {
+                taskKey: true,
+                claimedAt: true,
+            },
+            orderBy: {
+                claimedAt: "desc",
+            },
+        });
+
+        return claims;
     }
 }

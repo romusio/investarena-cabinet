@@ -1,6 +1,7 @@
 import { Controller, Get, Req, UseGuards, Post, Body } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { WalletService } from "./wallet.service";
+
 @Controller("wallet")
 export class WalletController {
     constructor(private walletService: WalletService) {}
@@ -23,6 +24,12 @@ export class WalletController {
           req.user.userId,
           Number(body.points || 0),
           Number(body.xp || 0),
+          body.taskKey,
         );
+    }
+    @UseGuards(JwtAuthGuard)
+    @Get("task-claims")
+    async taskClaims(@Req() req: any) {
+        return this.walletService.taskClaims(req.user.userId);
     }
 }
