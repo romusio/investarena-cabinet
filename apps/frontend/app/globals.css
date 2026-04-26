@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+/* Strike Arena style: dark background + neon green + violet glow */
+:root {
+  --bg: 10 12 22;
+  --panel: 17 24 39;
+  --panel2: 30 41 59;
+
+  --text: 255 255 255;
+  --muted: 148 163 184;
+  --border: 255 255 255;
+
+  /* основной фирменный зелёный */
+  --accent: 0 255 133;
+  --accent2: 0 200 83;
+
+  /* фиолетовый акцент */
+  --violet: 147 51 234;
+  --violet2: 168 85 247;
+
+  --danger: 239 68 68;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: rgb(6 8 18);
+}
+
+body {
+  min-height: 100vh;
+  background:
+          radial-gradient(900px 500px at 12% 0%, rgba(168, 85, 247, 0.10), transparent 55%),
+          radial-gradient(800px 500px at 100% 20%, rgba(0, 255, 133, 0.08), transparent 55%),
+          linear-gradient(180deg, rgb(6 8 18) 0%, rgb(8 10 20) 45%, rgb(5 7 15) 100%);
+  color: rgb(var(--text));
+}
+
+/* background glow */
+.sa-bg {
+  background-image:
+          radial-gradient(700px 400px at 15% 5%, rgba(168, 85, 247, 0.08), transparent 60%),
+          radial-gradient(600px 400px at 85% 15%, rgba(0, 255, 133, 0.06), transparent 55%);
+  background-repeat: no-repeat;
+}
+
+/* text selection */
+::selection {
+  background: rgba(0, 255, 133, 0.22);
+}
+
+@layer components {
+  .sa-card {
+    @apply rounded-[30px] border border-white/10 px-6 py-6;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+            0 18px 60px rgba(0, 0, 0, 0.55);
+    animation: fadeIn 0.4s ease;
+  }
+
+  .sa-card-soft {
+    @apply rounded-[24px] border border-white/10 px-5 py-4;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .sa-badge {
+    @apply inline-flex items-center gap-2 rounded-[20px] border border-white/15 px-3 py-1 text-xs text-white/80;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .sa-title {
+    @apply text-4xl font-semibold tracking-tight;
+  }
+
+  .sa-subtitle {
+    @apply mt-2 text-white/70;
+  }
+
+  /* buttons */
+  .sa-btn {
+    @apply inline-flex items-center justify-center rounded-[30px] border border-white/25 bg-transparent px-5 py-3 text-sm font-medium text-white transition;
+  }
+
+  .sa-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.45);
+  }
+
+  .sa-btn:active {
+    transform: translateY(1px);
+  }
+
+  .sa-btn-primary {
+    @apply border-white/30;
+    box-shadow:
+            0 0 0 2px rgba(255, 255, 255, 0.06),
+            0 16px 50px rgba(0, 0, 0, 0.6);
+  }
+
+  .sa-btn-primary:hover {
+    box-shadow:
+            0 0 0 2px rgba(0, 255, 133, 0.16),
+            0 0 30px rgba(0, 255, 133, 0.14),
+            0 18px 55px rgba(0, 0, 0, 0.65);
+  }
+
+  /* input */
+  .sa-input {
+    @apply w-full rounded-[18px] border border-white/10 px-4 py-3 text-white placeholder:text-white/40 outline-none transition;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .sa-input:focus {
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow:
+            0 0 0 2px rgba(0, 255, 133, 0.16),
+            0 0 24px rgba(0, 255, 133, 0.12);
+  }
+
+  /* progress */
+  .sa-progress {
+    @apply h-3 w-full overflow-hidden rounded-full border border-white/10;
+    background: rgba(255, 255, 255, 0.10);
+  }
+
+  .sa-progress-fill {
+    height: 100%;
+    width: var(--w, 0%);
+    background: linear-gradient(90deg, rgba(0, 255, 133, 1), rgba(168, 85, 247, 0.85));
+    box-shadow: 0 0 16px rgba(0, 255, 133, 0.18);
+    transition: width 260ms ease;
+  }
+
+  .sa-link {
+    @apply text-white/70 underline underline-offset-4 hover:text-white;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

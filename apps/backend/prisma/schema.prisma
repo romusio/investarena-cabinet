@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  phone        String?  @unique
+  fullName     String?
+  passwordHash String
+
+  xp        Int      @default(0)
+  level     Int      @default(1)
+  points    Int      @default(0)
+
+  ledgerEntries PointsLedger[]
+  redemptions   RewardRedemption[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+}
+
+enum RewardType {
+  CASHBACK
+  GAME_HOURS
+  MERCH
+}
+
+enum RedemptionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+  CANCELLED
+}
+
+enum LedgerType {
+  EARN
+  SPEND
+}
+
+model RewardItem {
+  id         String    @id @default(uuid())
+  title      String    @unique
+  type       RewardType
+  costPoints Int
+  // для кэшбэка/часов можно хранить “сколько” (например 300 ₽ или 2 часа)
+  value      Int?
+  // для мерча
+  stock      Int?      // null = не ограничено
+  isActive   Boolean   @default(true)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  redemptions RewardRedemption[]
+}
+
+model RewardRedemption {
+  id          String           @id @default(uuid())
+  userId      String
+  itemId      String
+  status      RedemptionStatus @default(PENDING)
+
+  // снапшот на момент покупки (чтобы цена/название не “плыли”)
+  itemTitle   String
+  itemType    RewardType
+  costPoints  Int
+  value       Int?
+
+  // для мерча (можно позже расширять)
+  deliveryName    String?
+  deliveryPhone   String?
+  deliveryAddress String?
+
+  user       User      @relation(fields: [userId], references: [id])
+  item       RewardItem @relation(fields: [itemId], references: [id])
+
+  ledgerEntries PointsLedger[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([itemId])
+}
+
+model PointsLedger {
+  id           String     @id @default(uuid())
+  userId       String
+  type         LedgerType
+  amount       Int        // всегда положительное число, знак задаёт type
+  reason       String?
+
+  redemptionId String?
+  redemption   RewardRedemption? @relation(fields: [redemptionId], references: [id])
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime   @default(now())
+
+  @@index([userId])
+  @@index([redemptionId])
+}
