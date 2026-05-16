@@ -25,6 +25,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  achievements UserAchievement[]
+
 }
 
 enum RewardType {
@@ -119,4 +121,28 @@ model UserTaskClaim {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, taskKey])
+}
+
+model Achievement {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  title       String
+  description String
+  category    String
+  icon        String
+  createdAt   DateTime @default(now())
+
+  users UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(uuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
 }

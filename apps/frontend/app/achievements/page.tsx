@@ -1,14 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNotifications } from "../components/notifications/NotificationProvider";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 type Achievement = {
     id: number;
+    key: string;
     title: string;
     description: string;
     category: "Активность" | "Задания" | "Магазин" | "Прогресс";
     done: boolean;
+    unlockedAt?: string | null;
     progress?: number;
     total?: number;
     icon: string;
@@ -17,126 +21,52 @@ type Achievement = {
 export default function AchievementsPage() {
     const { showToast, pushNotification } = useNotifications();
 
-    const [achievements, setAchievements] = useState<Achievement[]>([
-        {
-            id: 1,
-            title: "Первый вход",
-            description: "Впервые войдите в личный кабинет.",
-            category: "Активность",
-            done: true,
-            icon: "⚡",
-        },
-        {
-            id: 2,
-            title: "Первое действие",
-            description: "Совершите первое действие в кабинете.",
-            category: "Активность",
-            done: true,
-            icon: "🎯",
-        },
-        {
-            id: 3,
-            title: "5 действий",
-            description: "Выполните 5 действий в системе.",
-            category: "Активность",
-            done: true,
-            progress: 5,
-            total: 5,
-            icon: "🔥",
-        },
-        {
-            id: 4,
-            title: "10 действий",
-            description: "Выполните 10 действий в системе.",
-            category: "Активность",
-            done: false,
-            progress: 6,
-            total: 10,
-            icon: "🚀",
-        },
-        {
-            id: 5,
-            title: "Первое задание",
-            description: "Завершите любое ежедневное задание.",
-            category: "Задания",
-            done: true,
-            icon: "✅",
-        },
-        {
-            id: 6,
-            title: "3 задания за день",
-            description: "Выполните 3 задания за один день.",
-            category: "Задания",
-            done: false,
-            progress: 1,
-            total: 3,
-            icon: "📘",
-        },
-        {
-            id: 7,
-            title: "Первая покупка",
-            description: "Обменяйте StrikeCoin в магазине.",
-            category: "Магазин",
-            done: false,
-            icon: "🛒",
-        },
-        {
-            id: 8,
-            title: "Игровые часы",
-            description: "Получите награду категории игровые часы.",
-            category: "Магазин",
-            done: false,
-            icon: "🎮",
-        },
-        {
-            id: 9,
-            title: "Уровень 3",
-            description: "Достигните 3 уровня аккаунта.",
-            category: "Прогресс",
-            done: false,
-            progress: 1,
-            total: 3,
-            icon: "⭐",
-        },
-        {
-            id: 10,
-            title: "100 XP",
-            description: "Накопите суммарно 100 XP.",
-            category: "Прогресс",
-            done: false,
-            progress: 40,
-            total: 100,
-            icon: "💎",
-        },
-        {
-            id: 11,
-            title: "250 StrikeCoin",
-            description: "Накопите 250 StrikeCoin.",
-            category: "Прогресс",
-            done: false,
-            progress: 80,
-            total: 250,
-            icon: "🪙",
-        },
-        {
-            id: 12,
-            title: "Открыть магазин",
-            description: "Посетите страницу магазина наград.",
-            category: "Магазин",
-            done: true,
-            icon: "🎁",
-        },
-    ]);
+    const [achievements, setAchievements] = useState<Achievement[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    function unlockAchievement(id: number) {
-        const target = achievements.find((item) => item.id === id);
+    async function loadAchievements() {
+        const token = localStorage.getItem("accessToken");
+
+        const res = await fetch(`${API}/achievements`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            setAchievements(data);
+        }
+
+        setLoading(false);
+    }
+
+    useEffect(() => {
+        loadAchievements();
+    }, []);
+
+    async function unlockAchievement(key: string) {
+        const token = localStorage.getItem("accessToken");
+
+        const target = achievements.find((item) => item.key === key);
         if (!target || target.done) return;
 
-        setAchievements((prev) =>
-          prev.map((item) =>
-            item.id === id ? { ...item, done: true, progress: item.total ?? item.progress } : item
-          )
-        );
+        const res = await fetch(`${API}/achievements/unlock`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ key }),
+        });
+
+        if (!res.ok) {
+            showToast("Не удалось открыть достижение", "error");
+            return;
+        }
+
+        const updated = await res.json();
+        setAchievements(updated);
 
         showToast(`Открыто достижение "${target.title}"`, "success");
 
@@ -149,6 +79,14 @@ export default function AchievementsPage() {
 
     const doneCount = achievements.filter((item) => item.done).length;
     const progressPercent = Math.round((doneCount / achievements.length) * 100);
+
+    if (loading) {
+        return (
+          <div className="min-h-screen flex items-center justify-center text-white">
+              Загрузка достижений...
+          </div>
+        );
+    }
 
     return (
       <div className="min-h-screen p-6 text-white">
@@ -302,12 +240,9 @@ export default function AchievementsPage() {
                             </div>
 
                             {!item.done && (
-                              <button
-                                onClick={() => unlockAchievement(item.id)}
-                                className="w-full rounded-xl bg-gradient-to-r from-[#00FF85] via-[#00FF85] to-[#00C853] px-4 py-3 text-sm font-semibold text-black shadow-[0_0_25px_rgba(0,255,133,0.30)] hover:scale-[1.02] transition"
-                              >
-                                  Открыть достижение
-                              </button>
+                              <div className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-gray-400">
+                                  Выполните условие
+                              </div>
                             )}
                         </div>
                     </div>

@@ -1,10 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { LedgerType, RedemptionStatus, RewardType } from "@prisma/client";
+import { AchievementsService } from "../achievements/achievements.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { LedgerType, RewardType, RedemptionStatus } from "@prisma/client";
 
 @Injectable()
 export class RewardsService {
-    constructor(private prisma: PrismaService) {}
+    constructor(
+      private prisma: PrismaService,
+      private achievementsService: AchievementsService,
+    ) {}
 
     async listActive() {
         return this.prisma.rewardItem.findMany({
@@ -20,22 +24,42 @@ export class RewardsService {
         });
     }
 
-    async redeem(userId: string, dto: { rewardId: string; deliveryName?: string; deliveryPhone?: string; deliveryAddress?: string }) {
-        const reward = await this.prisma.rewardItem.findUnique({ where: { id: dto.rewardId } });
-        if (!reward || !reward.isActive) throw new NotFoundException("Награда не найдена");
+    async redeem(
+      userId: string,
+      dto: {
+          rewardId: string;
+          deliveryName?: string;
+          deliveryPhone?: string;
+          deliveryAddress?: string;
+      },
+    ) {
+        const reward = await this.prisma.rewardItem.findUnique({
+            where: { id: dto.rewardId },
+        });
 
-        const user = await this.prisma.user.findUnique({ where: { id: userId } });
-        if (!user) throw new NotFoundException("Пользователь не найден");
-
-        if (user.points < reward.costPoints) throw new BadRequestException("Недостаточно баллов");
-
-        if (reward.type === RewardType.MERCH) {
-            if (reward.stock !== null && reward.stock <= 0) throw new BadRequestException("Нет в наличии");
-            if (!dto.deliveryAddress) throw new BadRequestException("Для мерча нужен адрес доставки");
+        if (!reward || !reward.isActive) {
+            throw new NotFoundException("Награда не найдена");
         }
 
-        return this.prisma.$transaction(async (tx) => {
-            // 1) создаём redemption (заказ)
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            throw new NotFoundException("Пользователь не найден");
+        }
+
+        if (user.points < reward.costPoints) {
+            throw new BadRequestException("Недостаточно баллов");
+        }
+
+        if (reward.type === RewardType.MERCH) {
+            if (reward.stock !== null && reward.stock <= 0) {
+                throw new BadRequestException("Нет в наличии");
+            }
+        }
+
+        const result = await this.prisma.$transaction(async (tx) => {
             const redemption = await tx.rewardRedemption.create({
                 data: {
                     userId,
@@ -53,37 +77,67 @@ export class RewardsService {
                 },
             });
 
-            // 2) списываем points
             await tx.user.update({
                 where: { id: userId },
-                data: { points: { decrement: reward.costPoints } },
+                data: {
+                    points: {
+                        decrement: reward.costPoints,
+                    },
+                },
             });
 
-            // 3) журнал
             await tx.pointsLedger.create({
                 data: {
                     userId,
                     type: LedgerType.SPEND,
-                    amount: reward.costPoints, // amount всегда положительный, знак задаёт type
-                    reason: 'Обмен на награду: ${reward.title}',
+                    amount: reward.costPoints,
+                    reason: `Обмен на награду: ${reward.title}`,
             redemptionId: redemption.id,
         },
         });
 
-            // 4) stock для MERCH
             if (reward.type === RewardType.MERCH && reward.stock !== null) {
                 await tx.rewardItem.update({
                     where: { id: reward.id },
-                    data: { stock: { decrement: 1 } },
+                    data: {
+                        stock: {
+                            decrement: 1,
+                        },
+                    },
                 });
             }
 
+            await this.achievementsService.unlock(userId, "first_purchase");
+
+            if (reward.type === RewardType.GAME_HOURS) {
+                await this.achievementsService.unlock(userId, "game_hours");
+            }
             const freshUser = await tx.user.findUnique({
                 where: { id: userId },
-                select: { points: true, xp: true, level: true, email: true, fullName: true, id: true },
+                select: {
+                    points: true,
+                    xp: true,
+                    level: true,
+                    email: true,
+                    fullName: true,
+                    id: true,
+                },
             });
 
-            return { redemption, wallet: freshUser };
+            return {
+                redemption,
+                wallet: freshUser,
+            };
         });
+
+        await this.achievementsService.unlockByKey(userId, "first_purchase");
+
+        if (reward.type === RewardType.GAME_HOURS) {
+            await this.achievementsService.unlockByKey(userId, "game_hours");
+        }
+
+        await this.achievementsService.checkProgressAchievements(userId);
+
+        return result;
     }
 }

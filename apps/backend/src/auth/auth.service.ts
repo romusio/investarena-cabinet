@@ -2,17 +2,28 @@ import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/co
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { AchievementsService} from '../achievements/achievements.service';
 
 @Injectable()
 export class AuthService {
-    constructor(private users: UsersService, private jwt: JwtService) {}
+    constructor(private users: UsersService,
+                private jwt: JwtService,
+                private achievementsService: AchievementsService
+    ) {}
+
 
     async register(email: string, password: string, fullName?: string) {
         const existing = await this.users.findByEmail(email);
         if (existing) throw new ConflictException('Email already registered');
 
         const passwordHash = await bcrypt.hash(password, 10);
-        const user = await this.users.createUser({ email, passwordHash, fullName });
+        const user = await this.users.createUser({
+            email,
+            passwordHash,
+            fullName,
+        });
+
+        await this.achievementsService.unlock(user.id, "first_login");
 
         return this.issueTokens(user.id, user.email);
     }
@@ -24,8 +35,9 @@ export class AuthService {
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) throw new UnauthorizedException('Invalid email or password');
 
-        return this.issueTokens(user.id, user.email);
-    }
+        await this.achievementsService.unlock(user.id, "first_login");
+
+        return this.issueTokens(user.id, user.email);    }
 
     private issueTokens(userId: string, email: string) {
         const payload = { sub: userId, email };

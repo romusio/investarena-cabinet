@@ -8,6 +8,7 @@ import { AppController } from "./app.controller";
 import { GamificationModule } from "./gamification/gamification.module";
 import { RewardsModule } from "./rewards/rewards.module";
 import { WalletModule } from "./wallet/wallet.module";
+import { AchievementsModule} from './achievements/achievements.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { WalletModule } from "./wallet/wallet.module";
     GamificationModule,
     RewardsModule,
     WalletModule,
+    AchievementsModule,
   ],
   controllers: [AppController],
 })

@@ -15,10 +15,18 @@ type Wallet = {
     createdAt?: string;
 };
 
+type Achievement = {
+    id: string;
+    key: string;
+    title: string;
+    done: boolean;
+};
+
 export default function ProfilePage() {
     const [wallet, setWallet] = useState<Wallet | null>(null);
     const [loading, setLoading] = useState(true);
     const [claimedTaskKeys, setClaimedTaskKeys] = useState<string[]>([]);
+    const [achievements, setAchievements] = useState<Achievement[]>([]);
 
     async function loadTaskClaims(): Promise<void> {
         const token = localStorage.getItem("accessToken");
@@ -39,6 +47,21 @@ export default function ProfilePage() {
         });
 
         setClaimedTaskKeys(keys);
+    }
+
+    async function loadAchievements(): Promise<void> {
+        const token = localStorage.getItem("accessToken");
+
+        const res = await fetch(`${API}/achievements`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        setAchievements(data);
     }
     async function loadWallet() {
         const token = localStorage.getItem("accessToken");
@@ -68,6 +91,7 @@ export default function ProfilePage() {
     useEffect(() => {
         loadWallet();
         loadTaskClaims();
+        loadAchievements();
     }, []);
 
     if (loading) {
@@ -106,6 +130,8 @@ export default function ProfilePage() {
     ).length;
 
     const totalDailyTasks = dailyTaskIds.length;
+    const completedAchievements = achievements.filter((item) => item.done).length;
+    const totalAchievements = achievements.length;
 
     return (
       <div className="min-h-screen p-6 text-white">
@@ -294,7 +320,7 @@ export default function ProfilePage() {
 
                   <div className="mt-6 flex items-end justify-between">
                       <div className="text-3xl font-bold text-[#00FF85] drop-shadow-[0_0_8px_rgba(0,255,133,0.3)]">
-                          12 / 40
+                          {completedAchievements} / {totalAchievements || 12}
                       </div>
                       <div className="text-sm text-white/70 transition group-hover:text-[#00FF85]">
                           Открыть →

@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { AchievementsService} from '../achievements/achievements.service';
 
 @Injectable()
 export class WalletService {
@@ -57,10 +58,38 @@ export class WalletService {
             });
         }
 
+        await this.achievementsService.checkProgressAchievements(userId);
+
+        if (taskKey) {
+            await this.achievementsService.unlockByKey(userId, "first_task");
+        }
+
+        const taskCount = await this.prisma.userTaskClaim.count({
+            where: { userId },
+        });
+
+        if (taskCount >= 3) {
+            await this.achievementsService.unlockByKey(userId, "three_tasks_day");
+        }
+
+        if (newLevel >= 3) {
+            await this.achievementsService.unlockByKey(userId, "level_3");
+        }
+
+        if (newXp >= 100) {
+            await this.achievementsService.unlockByKey(userId, "xp_100");
+        }
+
+        if (updatedUser.points >= 250) {
+            await this.achievementsService.unlockByKey(userId, "points_250");
+        }
+
         return updatedUser;
     }
-    constructor(private prisma: PrismaService) {}
-
+    constructor(
+      private prisma: PrismaService,
+      private achievementsService: AchievementsService,
+    ) {}
     async wallet(userId: string) {
         return this.prisma.user.findUnique({
             where: { id: userId },
