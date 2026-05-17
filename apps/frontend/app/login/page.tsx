@@ -28,6 +28,7 @@ export default function LoginPage() {
             if (!res.ok) throw new Error(data?.message || "Ошибка входа");
 
             localStorage.setItem("accessToken", data.accessToken);
+            window.dispatchEvent(new Event("auth-changed"));
             router.push("/profile");
         } catch (e: any) {
             setErr(e.message || "Ошибка");

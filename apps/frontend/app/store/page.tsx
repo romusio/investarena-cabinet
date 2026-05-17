@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useNotifications } from "../components/notifications/NotificationProvider";
+import { unlock } from 'next/dist/next-devtools/dev-overlay/components/overlay/body-locker';
 
 const API = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -127,8 +128,22 @@ export default function StorePage() {
     setLoading(false);
   }
 
+  async function unlockOpenStoreAchievement() {
+    const token = localStorage.getItem("accessToken");
+
+    await fetch(`${API}/achievements/unlock`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ key: "open_store" }),
+    }).catch(() => null);
+  }
+
   useEffect(() => {
     loadData();
+    unlockOpenStoreAchievement()
   }, []);
 
   function rewardTypeLabel(type: RewardItem["type"]) {
@@ -352,7 +367,7 @@ export default function StorePage() {
       <div className="pointer-events-none absolute inset-0 opacity-10">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/images/bg/bg-main.jpeg')" }}
+          //style={{ backgroundImage: "url('/images/bg/bg-main.jpeg')" }}
         />
       </div>
 

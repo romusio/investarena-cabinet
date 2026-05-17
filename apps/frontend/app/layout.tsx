@@ -3,6 +3,10 @@ import Header from "./components/Header";
 import { NotificationProvider } from "./components/notifications/NotificationProvider";
 import Toast from "./components/notifications/Toast";
 
+export const metadata = {
+  title: "Strike Arena — личный кабинет",
+  description: "Геймифицированный личный кабинет клиента Strike Arena",
+};
 export default function RootLayout({children, }: {children: React.ReactNode;})
 {
     return (
